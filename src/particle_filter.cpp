@@ -45,7 +45,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
         p.y = dist_y(gen);
         p.theta = dist_theta(gen);
         p.weight = 1.0;
-        particles.push_back(p);
+        particles.push_back(std::move(p));
         weights.push_back(1.0);
     }
 
@@ -129,6 +129,14 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
             }
         }
 
+        // if all landmarks are outside of sensor range, 
+        // this particular particle contains zero information 
+        if (0 == predicted.size()) {
+            p.weight = 0.0;
+            weights.push_back(0.0);
+            continue;
+        }
+
         // transform observation into MAP's coordinate sstem
         std::vector<LandmarkObs> observation_map;
 
@@ -180,9 +188,10 @@ void ParticleFilter::resample() {
     // NOTE: You may find std::discrete_distribution helpful here.
     //   http://en.cppreference.com/w/cpp/numeric/random/discrete_distribution
 
+
+    std::discrete_distribution<double> d(weights.begin(), weights.end());
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::discrete_distribution<double> d(weights.begin(), weights.end());
     std::vector<Particle> p2;
 
     for (int i = 0; i < num_particles; ++i) {
@@ -190,7 +199,8 @@ void ParticleFilter::resample() {
         p2.push_back(p);
     }
 
-    particles = p2;
+    // applied move assignment operator
+    particles = std::move(p2);
     weights.clear();
 }
 
